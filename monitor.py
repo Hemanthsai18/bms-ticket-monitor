@@ -141,8 +141,8 @@ def main():
                     print("\n*** TICKETS AVAILABLE! ***")
                     send_email(details)
                     make_call()
-                    print("Waiting 5 min before re-checking...")
-                    time.sleep(300)
+                    print("Done! Exiting.")
+                    break
                 else:
                     time.sleep(CHECK_INTERVAL)
     finally:
