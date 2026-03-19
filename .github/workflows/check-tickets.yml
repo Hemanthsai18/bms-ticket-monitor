@@ -2,7 +2,7 @@ name: BMS Ticket Monitor
 
 on:
   schedule:
-    - cron: '*/2 * * * *'  # Every 2 minutes
+    - cron: '*/6 * * * *'  # Every 6 minutes (each run loops for 5 min)
   workflow_dispatch: {}     # Manual trigger button
 
 jobs:
@@ -22,12 +22,16 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install selenium
+        run: pip install selenium twilio
 
       - name: Check BMS for tickets
         env:
-          RUN_MODE: once
+          RUN_MODE: ci
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_APP_PASSWORD: ${{ secrets.SENDER_APP_PASSWORD }}
           RECEIVER_EMAILS: ${{ secrets.RECEIVER_EMAILS }}
+          TWILIO_SID: ${{ secrets.TWILIO_SID }}
+          TWILIO_AUTH: ${{ secrets.TWILIO_AUTH }}
+          TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+          TWILIO_TO: ${{ secrets.TWILIO_TO }}
         run: python monitor.py

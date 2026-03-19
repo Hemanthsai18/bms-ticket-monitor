@@ -20,9 +20,15 @@ SEATS_NEEDED = 2
 CHECK_INTERVAL = 45  # seconds between checks (for loop mode)
 
 # Email — reads from env vars (for GitHub Actions) or falls back to defaults
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "hemanthchintada@gmail.com")
-SENDER_APP_PASSWORD = os.environ.get("SENDER_APP_PASSWORD", "ovse jibs phoe estl")
-RECEIVER_EMAILS = os.environ.get("RECEIVER_EMAILS", "hemanthchintada@gmail.com,anumulakarthikreddy12345@gmail.com").split(",")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "")
+SENDER_APP_PASSWORD = os.environ.get("SENDER_APP_PASSWORD", "")
+RECEIVER_EMAILS = os.environ.get("RECEIVER_EMAILS", "").split(",")
+
+# Twilio (phone call) — set via env vars or GitHub Secrets
+TWILIO_SID = os.environ.get("TWILIO_SID", "")
+TWILIO_AUTH = os.environ.get("TWILIO_AUTH", "")
+TWILIO_FROM = os.environ.get("TWILIO_FROM", "")
+TWILIO_TO_NUMBERS = os.environ.get("TWILIO_TO", "").split(",")
 # =========================================
 
 
@@ -83,20 +89,43 @@ def send_email(details):
         print(f">>> Email failed: {e}")
 
 
+def make_call():
+    """Make a phone call via Twilio to all numbers."""
+    from twilio.rest import Client
+    try:
+        client = Client(TWILIO_SID, TWILIO_AUTH)
+        for number in TWILIO_TO_NUMBERS:
+            number = number.strip()
+            call = client.calls.create(
+                twiml='<Response><Say voice="alice">Alert! Dhurandhar PXL tickets are now available at PVR Inorbit Cyberabad. Open BookMyShow and book now!</Say><Pause length="1"/><Say voice="alice">Repeating. Dhurandhar PXL tickets are available. Book now on BookMyShow!</Say></Response>',
+                to=number,
+                from_=TWILIO_FROM,
+            )
+            print(f">>> CALL MADE to {number}! SID: {call.sid}")
+    except Exception as e:
+        print(f">>> Call failed: {e}")
+
+
 def main():
-    mode = os.environ.get("RUN_MODE", "loop")  # "once" for GitHub Actions, "loop" for local
+    mode = os.environ.get("RUN_MODE", "loop")  # "ci" for GitHub Actions, "loop" for local
 
     print("Monitoring: Dhurandhar | PXL | PVR Inorbit Cyberabad | 22 Mar 2026")
 
     driver = create_driver()
     try:
-        if mode == "once":
-            # Single check (GitHub Actions)
-            available, details = check_shows(driver)
-            print(f"[Check] {details}")
-            if available:
-                print("*** TICKETS AVAILABLE! ***")
-                send_email(details)
+        if mode == "ci":
+            # GitHub Actions: loop for 5 minutes, check every 30s
+            end_time = time.time() + 300  # 5 minutes
+            print("CI mode: checking every 30s for 5 minutes...")
+            while time.time() < end_time:
+                available, details = check_shows(driver)
+                print(f"[Check] {details}")
+                if available:
+                    print("*** TICKETS AVAILABLE! ***")
+                    send_email(details)
+                    make_call()
+                    break
+                time.sleep(30)
         else:
             # Loop mode (local laptop)
             print(f"Checking every {CHECK_INTERVAL}s. Press Ctrl+C to stop.\n")
@@ -106,6 +135,7 @@ def main():
                 if available:
                     print("\n*** TICKETS AVAILABLE! ***")
                     send_email(details)
+                    make_call()
                     print("Waiting 5 min before re-checking...")
                     time.sleep(300)
                 else:
