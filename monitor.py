@@ -33,13 +33,18 @@ TWILIO_TO_NUMBERS = os.environ.get("TWILIO_TO", "").split(",")
 
 
 def create_driver():
-    """Create a headless Chrome browser."""
+    """Create a headless Chromium browser."""
     opts = Options()
     opts.add_argument("--headless=new")
     opts.add_argument("--disable-gpu")
     opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--window-size=1920,1080")
     opts.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
+    # Use chromium if available (Docker/Railway), else default Chrome (local)
+    chromium_path = "/usr/bin/chromium"
+    if os.path.exists(chromium_path):
+        opts.binary_location = chromium_path
     return webdriver.Chrome(options=opts)
 
 
